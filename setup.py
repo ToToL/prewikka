@@ -51,7 +51,7 @@ def listfiles(*dirs):
                 if filename[0] != '.' and fnmatch.fnmatch(filename, pattern)]
 
 
-def template_compile(input, output_dir):
+def template_compile(input):
     from Cheetah.CheetahWrapper import CheetahWrapper
     CheetahWrapper().main([ sys.argv[0], "compile", "--nobackup", "--shbang", "", input ])
 
@@ -107,7 +107,7 @@ class my_build_py(build_py):
                     compiled_stat = os.stat(compiled)
                     if compiled_stat.st_mtime > template_stat.st_mtime:
                         continue
-                template_compile(template, self.build_lib)
+                template_compile(template)
 
     def check_package(self, package, package_dir):
         return None
@@ -144,12 +144,10 @@ class MyDistribution(Distribution):
 class my_bdist(sdist):
     def copy_file(self, infile, outfile, **kwargs):
         if outfile[-5:] == ".tmpl":
-            output_dir = os.path.split(outfile)[0]
-            output_dir = output_dir[:output_dir.find(os.path.dirname(infile))]
-            template_compile(infile, output_dir)
-            outfile = output_dir + "/" + infile.replace(".tmpl", ".pyc")
-        else:
-            apply(sdist.copy_file, (self, infile, outfile), kwargs)
+            template_compile(infile)
+            infile = infile.replace(".tmpl", ".py")
+            outfile = outfile.replace(".tmpl", ".py")
+        apply(sdist.copy_file, (self, infile, outfile, kwargs))
 
         if infile[:7] != "Cheetah" and outfile[-3:] == ".py":
             util.byte_compile([ outfile ])
@@ -313,6 +311,6 @@ setup(name="prewikka",
       cmdclass={ 'build_py': my_build_py,
                  'install': my_install,
                  'install_scripts': my_install_scripts,
-                 'my_bdist': my_bdist
+                 'bdist': my_bdist
       },
       distclass=MyDistribution)
